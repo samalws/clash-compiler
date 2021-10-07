@@ -67,6 +67,7 @@ basicBinaryTB
   :: forall n d
    . ( KnownNat n
      , KnownNat d
+     , 1 <= n
      )
   => (   Clock XilinxSystem
       -> DSignal XilinxSystem 0 Float
