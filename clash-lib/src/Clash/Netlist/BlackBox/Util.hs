@@ -545,8 +545,8 @@ renderElem b (IF c t f) = do
       CmpLE e1 e2 -> if check xOpt iw syn e1 <= check xOpt iw syn e2
                         then 1
                         else 0
-      _ -> error $ $(curLoc) ++ "IF: condition must be: SIZE, LENGTH, IW64, LIT, ISLIT, or ISARG"
-
+      _ -> error $ $(curLoc) ++ "IF: condition must be: SIZE, LENGTH, LIT, DEPTH, IW64, VIVADO, OTHERSYN, ISVAR, ISLIT, ISUNDEFINED, ISACTIVEENABLE, ACTIVEEDGE, ISSYNC, ISINITDEFINED, ISACTIVEHIGH, STRCMP, AND or CMPLE."
+                             ++ "\nGot: " ++ show c'
 renderElem b e = fmap const (renderTag b e)
 
 parseFail :: Text -> BlackBoxTemplate
