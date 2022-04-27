@@ -1,0 +1,1 @@
+ADDED: `scanlPar` and `scanrPar` in Clash's Prelude. These variants of `scanl1` and `scanr1` compile to a binary tree of operations, with a depth of log2(`n`) (`n` being the length of the vector) rather than a depth of `n` for `scanl1` and `scanr1`. [#2177](https://github.com/clash-lang/clash-compiler/pull/2177)
