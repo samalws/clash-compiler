@@ -13,6 +13,7 @@ instantiations.
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms   #-}
 {-# LANGUAGE QuasiQuotes       #-}
@@ -404,7 +405,7 @@ boolToBit bitName = \case
   T -> pure High
   F -> pure Low
   TExpr Bool boolExpr -> do
-    texp@(~(TExpr _ (Identifier uniqueBitName Nothing))) <- declare bitName Wire Bit
+    texp@(~(TExpr _ (Identifier uniqueBitName Nothing))) <- declare bitName Reg Bit
     addDeclaration $
       CondAssignment uniqueBitName Bit boolExpr Bool
         [ (Just (BoolLit True), Literal Nothing (BitLit H))
@@ -422,7 +423,7 @@ enableToBit
   -> State (BlockState backend) TExpr
 enableToBit bitName = \case
   TExpr ena@(Enable _) enableExpr -> do
-    texp@(~(TExpr _ (Identifier uniqueBitName Nothing))) <- declare bitName Wire Bit
+    texp@(~(TExpr _ (Identifier uniqueBitName Nothing))) <- declare bitName Reg Bit
     addDeclaration $
       CondAssignment uniqueBitName Bit enableExpr ena
         -- Enable normalizes to Bool for all current backends
@@ -446,7 +447,7 @@ boolFromBit boolName = \case
   High -> pure T
   Low -> pure F
   TExpr Bit bitExpr -> do
-    texp@(~(TExpr _ (Identifier uniqueBoolName Nothing))) <- declare boolName Wire Bool
+    texp@(~(TExpr _ (Identifier uniqueBoolName Nothing))) <- declare boolName Reg Bool
     addDeclaration $
       CondAssignment uniqueBoolName Bool bitExpr Bit
         [ (Just (BitLit H), Literal Nothing (BoolLit True))
