@@ -438,7 +438,7 @@ runClashTest = defaultMain $ clashTestRoot
                                                  -- , "subBasicTB"
                                                  -- , "mulBasicTB"
                                                  -- , "divBasicTB"]}
-          [ runTest "DcFifoTop" def
+          [ runTest "DcFifo" def
           ]
         ]
       , clashTestGroup "CSignal"

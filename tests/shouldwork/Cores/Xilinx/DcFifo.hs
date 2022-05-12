@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Example.Project where
+module DcFifo where
 
 import Clash.Explicit.Prelude
 import Clash.Cores.Xilinx.DcFifo.Explicit
@@ -93,9 +93,7 @@ topEntity ::
   Reset ReadDom ->
 
   -- | Write data
-  Signal WriteDom (BitVector 16) ->
-  -- | Write enable
-  Signal WriteDom Bool ->
+  Signal WriteDom (Maybe (BitVector 16)) ->
   -- | Read enable
   Signal ReadDom Bool ->
   XilinxFifo ReadDom WriteDom 4 16
@@ -113,9 +111,7 @@ testBench = done
 
   -- Driver
   wLfsr = bitToBool <$> lfsrF wClk wRst wEna 0xDEAD
-  maybeWrite = fifoDriver wClk wRst wEna wLfsr (bundle (writeReset, isFull, writeCount))
-  writeEnable = isJust <$> maybeWrite
-  writeData = fromJustX <$> maybeWrite
+  writeData = fifoDriver wClk wRst wEna wLfsr (bundle (writeReset, isFull, writeCount))
 
   -- Sampler
   rLfsr = bitToBool <$> lfsrF rClk rRst rEna 0xBEEF
@@ -123,12 +119,11 @@ testBench = done
   readEnable = isJust <$> maybeReadData
 
   XilinxFifo{writeReset, isFull, writeCount, readReset, isEmpty, readCount, fifoData} =
-    topEntity rClk wClk rRst writeData writeEnable readEnable
+    topEntity rClk wClk rRst writeData readEnable
 
   errorFound = fifoVerifier rClk rRst rEna maybeReadData
   done = outputVerifier rClk rRst (repeat @100 False) errorFound
 {-# NOINLINE testBench #-}
-
 
 fifoVerifier ::
   KnownDomain dom =>
