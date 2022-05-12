@@ -53,7 +53,7 @@ dcFifoBBF _isD _primName args _resTys = do
      , _constraint1, _constraint2
      , either error id . termToDataError -> dcConfig
      , _wClk, _rClk, _rst, _wData
-     , _wEnable, _rEnable
+     , _rEnable
 
     -- TODO: Make this blackbox return multiple results, instead of a tuple. See:
     --       https://github.com/clash-lang/clash-compiler/pull/1560
@@ -101,8 +101,8 @@ dcFifoTF dcFifoName DcConfig{..} = TemplateFunction [] (const True) $ \bbCtx -> 
     [  _knownNatN, _knownDomainWrite, _knownDomainRead, _knownNatDepth
      , _constraint1, _constraint2
      , _dcConfig
-     , wClk, rClk, rst, wData
-     , wEnable, rEnable
+     , wClk, rClk, rst, wDataM
+     , rEnable
      ] = map fst (DSL.tInputs bbCtx)
 
     [tResult] = map DSL.ety (DSL.tResults bbCtx)
@@ -110,6 +110,8 @@ dcFifoTF dcFifoName DcConfig{..} = TemplateFunction [] (const True) $ \bbCtx -> 
   dcFifoInstName <- Id.makeBasic "dcfifo_inst"
 
   DSL.declarationReturn bbCtx "dcfifo_inst_block" $ do
+    (wEna, wData) <- DSL.deconstructMaybe wDataM ("wr_ena", "rd_dout")
+
     wrResetBusy <- DSL.declare "wr_reset_busy" N.Wire N.Bit
     wrFull      <- DSL.declare "wr_full"       N.Wire N.Bit
     wrDataCount <- DSL.declare "wr_data_count" N.Wire (N.BitVector depth)
@@ -121,7 +123,6 @@ dcFifoTF dcFifoName DcConfig{..} = TemplateFunction [] (const True) $ \bbCtx -> 
     wrFullBool  <- DSL.boolFromBit "wr_full_bool" wrFull
     rdEmptyBool <- DSL.boolFromBit "rd_empty_bool" rdEmpty
 
-    wEnableBit <- DSL.boolToBit "wr_enable" wEnable
     rEnableBit <- DSL.boolToBit "rd_enable" rEnable
 
     wrDataCountUnsigned <- DSL.unsignedFromBitVector "wr_data_count_unsigned" wrDataCount
@@ -136,7 +137,7 @@ dcFifoTF dcFifoName DcConfig{..} = TemplateFunction [] (const True) $ \bbCtx -> 
         , ("wr_clk", wClk)
         , ("rd_clk", rClk)
         , ("din", wData)
-        , ("wr_en", wEnableBit)
+        , ("wr_en", wEna)
         , ("rd_en", rEnableBit)
         ]
 

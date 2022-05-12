@@ -115,58 +115,23 @@ dcFifo ::
   Reset read ->
 
   -- | Write data
-  Signal write (BitVector n) ->
-  -- | Write enable
-  Signal write Bool ->
+  Signal write (Maybe (BitVector n)) ->
   -- | Read enable
   Signal read Bool ->
   XilinxFifo read write depth n
-dcFifo dcCfg wClk rClk rst writeData wEnable rEnable =
-  let (wRst, f, wCnt, rRst, e, rCnt, rData) = dcFifo# dcCfg wClk rClk rst writeData wEnable rEnable
-    in XilinxFifo wRst f wCnt rRst e rCnt rData
-
-dcFifo# ::
-  forall depth n write read .
-  ( KnownNat n
-  , KnownDomain write
-  , KnownDomain read
-
-  , KnownNat depth
-  , 4 <= depth
-  , depth <= 17
-  ) =>
-  DcConfig (SNat depth) ->
-
-  Clock write -> Clock read -> Reset read ->
-
-  -- | Write data
-  Signal write (BitVector n) ->
-  -- | Write enable
-  Signal write Bool ->
-  -- | Read enable
-  Signal read Bool ->
-  ( Signal write ResetBusy
-  , Signal write Full
-  , Signal write (DataCount depth)
-
-  , Signal read ResetBusy
-  , Signal read Empty
-  , Signal read (DataCount depth)
-  , Signal read (BitVector n)
-  )
-dcFifo# DcConfig{..} wClk rClk rst writeData wEnable rEnable =
+dcFifo DcConfig{..} wClk rClk rst writeData rEnable =
   let
     (wRstBusy, wFull, wCnt, rRstBusy, rEmpty, rCnt, rData) =
-      go initState rstSignalR rEnable rstSignalW wEnable writeData
-  in
-    ( wRstBusy
-    , wFull
-    , if dcWriteDataCount then wCnt else deepErrorX "Write data count disabled"
-    , rRstBusy
-    , rEmpty
-    , if dcReadDataCount then rCnt else deepErrorX "Read data count disabled"
-    , deepErrorX "No sample" :- rData
-    )
+      go initState rstSignalR rEnable rstSignalW writeData
+  in XilinxFifo
+      wRstBusy
+      wFull
+      (if dcWriteDataCount then wCnt else deepErrorX "Write data count disabled")
+      rRstBusy
+      rEmpty
+      (if dcReadDataCount then rCnt else deepErrorX "Read data count disabled")
+      (deepErrorX "No sample" :- rData)
+
  where
   rstSignalR = unsafeToHighPolarity rst
   rstSignalW = unsafeSynchronizer rClk wClk $ unsafeToHighPolarity rst
@@ -184,8 +149,7 @@ dcFifo# DcConfig{..} wClk rClk rst writeData wEnable rEnable =
     Signal read Bool -> -- reset
     Signal read Bool -> -- read enabled
     Signal write Bool -> -- reset
-    Signal write Bool -> -- write enable
-    Signal write (BitVector n) -> -- write data
+    Signal write (Maybe (BitVector n)) -> -- write data
     ( Signal write ResetBusy
     , Signal write Full
     , Signal write (DataCount depth)
@@ -201,28 +165,28 @@ dcFifo# DcConfig{..} wClk rClk rst writeData wEnable rEnable =
       else goWrite st rstR rEna rstW
     -- TODO: goBoth case?
 
-  goWrite (FifoState _ rt) rstR rEna (True :- rstWNext) (_ :- wEna) (_ :- wData) =
+  goWrite (FifoState _ rt) rstR rEna (True :- rstWNext) (_ :- wData) =
       (True :- wRstBusy, False :- preFull, 0 :- preWCnt, rRstBusy, fifoEmpty, rCnt, rData)
     where
       (wRstBusy, preFull, preWCnt, rRstBusy, fifoEmpty, rCnt, rData) =
-        go (FifoState mempty (rt-tWr)) rstR rEna rstWNext wEna wData
+        go (FifoState mempty (rt-tWr)) rstR rEna rstWNext wData
 
-  goWrite (FifoState q rt) rstR rEna (_ :- rstW) (wEna :- wEnas1) (wDat :- wDats1) =
+  goWrite (FifoState q rt) rstR rEna (_ :- rstW) (wDat :- wDats1) =
     (False :- wRstBusy, full, wCnt, rRstBusy, fifoEmpty, rCnt, rData)
     where
       (wRstBusy, preFull, preWCnt, rRstBusy, fifoEmpty, rCnt, rData) =
-        go (FifoState q' (rt-tWr)) rstR rEna rstW wEnas1 wDats1
+        go (FifoState q' (rt-tWr)) rstR rEna rstW wDats1
 
       wCnt = sDepth q :- preWCnt
       full = (Seq.length q == maxDepth) :- preFull
       q' =
-        if Seq.length q < maxDepth && wEna
-          then wDat Seq.<| q
+        if Seq.length q < maxDepth
+          then case wDat of { Just x -> x Seq.<| q ; _ -> q }
           else q
 
   sDepth = fromIntegral . Seq.length
 
-  goRead (FifoState _ rt) (True :- rstRNext) (_ :- rEnas1) rstW wEna wData =
+  goRead (FifoState _ rt) (True :- rstRNext) (_ :- rEnas1) rstW wData =
     (wRstBusy, full, wCnt, True :- rRstBusy, fifoEmpty, rCnt, rData)
     where
       rData = deepErrorX "Reset" :- preRData
@@ -230,9 +194,9 @@ dcFifo# DcConfig{..} wClk rClk rst writeData wEnable rEnable =
       rCnt = 0 :- preRCnt
 
       (wRstBusy, full, wCnt, rRstBusy, preEmpty, preRCnt, preRData) =
-        go (FifoState mempty (rt+tR)) rstRNext rEnas1 rstW wEna wData
+        go (FifoState mempty (rt+tR)) rstRNext rEnas1 rstW wData
 
-  goRead (FifoState q rt) (_ :- rstRNext) (rEna :- rEnas1) rstW wEna wData =
+  goRead (FifoState q rt) (_ :- rstRNext) (rEna :- rEnas1) rstW wData =
     (wRstBusy, full, wCnt, False :- rRstBusy, fifoEmpty, rCnt, rData)
     where
       rCnt = sDepth q :- preRCnt
@@ -240,7 +204,7 @@ dcFifo# DcConfig{..} wClk rClk rst writeData wEnable rEnable =
       rData = nextData :- preRData
 
       (wRstBusy, full, wCnt, rRstBusy, preEmpty, preRCnt, preRData) =
-        go (FifoState q' (rt+tR)) rstRNext rEnas1 rstW wEna wData
+        go (FifoState q' (rt+tR)) rstRNext rEnas1 rstW wData
 
       (q', nextData) =
         if rEna
@@ -256,10 +220,10 @@ dcFifo# DcConfig{..} wClk rClk rst writeData wEnable rEnable =
   tWr = snatToNum @Int (clockPeriod @write)
   tR = snatToNum @Int (clockPeriod @read)
 
-{-# NOINLINE dcFifo# #-}
-{-# ANN dcFifo# (InlineYamlPrimitive [minBound..maxBound] [i|
+{-# NOINLINE dcFifo #-}
+{-# ANN dcFifo (InlineYamlPrimitive [minBound..maxBound] [i|
 BlackBoxHaskell:
-    name: Clash.Cores.Xilinx.DcFifo.Explicit.dcFifo#
+    name: Clash.Cores.Xilinx.DcFifo.Explicit.dcFifo
     templateFunction: Clash.Cores.Xilinx.DcFifo.BlackBoxes.dcFifoBBF
     workInfo: Always
     #    multiResult: true

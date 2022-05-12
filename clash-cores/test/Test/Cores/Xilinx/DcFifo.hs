@@ -105,15 +105,15 @@ takeState (readLastCycle, stalls) (_, fifoEmpty, _, d) =
 feedState ::
   [Either Int (BitVector 32)] ->
   (ResetBusy, Full, DataCount 4) ->
-  ([Either Int (BitVector 32)], (BitVector 32, Bool))
-feedState xs (True, _, _) = (xs, (deepErrorX "Resetting", False))
-feedState [] _ = ([], (deepErrorX "No more data", False))
-feedState (Left 0:xs) (_, _, _) = (xs, (deepErrorX "Stall simulation", False))
-feedState (Left i:xs) (_, _, _) = (Left (i-1):xs, (deepErrorX "Stall simulation", False))
+  ([Either Int (BitVector 32)], Maybe (BitVector 32))
+feedState xs (True, _, _) = (xs, Nothing)
+feedState [] _ = ([], Nothing)
+feedState (Left 0:xs) (_, _, _) = (xs, Nothing)
+feedState (Left i:xs) (_, _, _) = (Left (i-1):xs, Nothing)
 feedState (Right x:xs) (_, full, _) =
   if full
-    then (Right x:xs, (deepErrorX "FIFO full, waiting", False))
-    else (xs, (x, True))
+    then (Right x:xs, Nothing)
+    else (xs, Just x)
 
 throughFifo
   :: [Either Int (BitVector 32)] -- ^ Write data ('Left' 'Int' indicates a stall of duration @i@)
@@ -124,7 +124,7 @@ throughFifo wrDataList rdStalls = rdDataList
     clk = clockGen @XilinxSystem
     rst = resetGen @XilinxSystem
     ena = enableGen @XilinxSystem
-    (wrData, wrEna) =
+    wrData =
       -- The reset to the mealy machine must be the same reset fed to the FIFO
       mealyB clk rst ena feedState wrDataList (wrRstBusy, wrFull, wrCnt)
     (rdDataMaybe, rdEna) =
@@ -136,4 +136,4 @@ throughFifo wrDataList rdStalls = rdDataList
         $ bundle rdDataMaybe
 
     (XilinxFifo wrRstBusy wrFull wrCnt rdRstBusy rdEmpty rdCnt rdData) =
-      dcFifo defConfig clk clk rst wrData wrEna rdEna
+      dcFifo defConfig clk clk rst wrData rdEna
