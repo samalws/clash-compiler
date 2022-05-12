@@ -87,7 +87,7 @@ takeState ::
   (Bool, [Maybe Int]) ->
   (ResetBusy, Empty, DataCount depth, BitVector n) ->
   ((Bool, [Maybe Int]), (Maybe (BitVector n), Bool))
-takeState (_, stalls) (1, _, _, _) = ((False, stalls), (Nothing, False))
+takeState (_, stalls) (True, _, _, _) = ((False, stalls), (Nothing, False))
 takeState (readLastCycle, Just 0:stalls) (_, _, _, d) =
     ((False, stalls), (nextData, False))
   where
@@ -106,7 +106,7 @@ feedState ::
   [Either Int (BitVector 32)] ->
   (ResetBusy, Full, DataCount 4) ->
   ([Either Int (BitVector 32)], (BitVector 32, Bool))
-feedState xs (1, _, _) = (xs, (deepErrorX "Resetting", False))
+feedState xs (True, _, _) = (xs, (deepErrorX "Resetting", False))
 feedState [] _ = ([], (deepErrorX "No more data", False))
 feedState (Left 0:xs) (_, _, _) = (xs, (deepErrorX "Stall simulation", False))
 feedState (Left i:xs) (_, _, _) = (Left (i-1):xs, (deepErrorX "Stall simulation", False))
