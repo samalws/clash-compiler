@@ -429,18 +429,18 @@ runClashTest = defaultMain $ clashTestRoot
       -- The Cores.Xilinx.Floating tests require Vivado (and take much time to
       -- run).
       --
-      , clashTestGroup "Cores"
-        [ clashTestGroup "Xilinx"
-          -- [ runTest "Floating" def{ clashFlags=["-fclash-float-support"]
-                                  -- , buildTargets=[ "addBasicTB"
-                                                 -- , "addEnableTB"
-                                                 -- , "addShortPLTB"
-                                                 -- , "subBasicTB"
-                                                 -- , "mulBasicTB"
-                                                 -- , "divBasicTB"]}
-          [ runTest "DcFifo" def
-          ]
-        ]
+      -- , clashTestGroup "Cores"
+        -- [ clashTestGroup "Xilinx"
+          -- -- [ runTest "Floating" def{ clashFlags=["-fclash-float-support"]
+                                  -- -- , buildTargets=[ "addBasicTB"
+                                                 -- -- , "addEnableTB"
+                                                 -- -- , "addShortPLTB"
+                                                 -- -- , "subBasicTB"
+                                                 -- -- , "mulBasicTB"
+                                                 -- -- , "divBasicTB"]}
+          -- [ runTest "DcFifo" def
+          -- ]
+        -- ]
       , clashTestGroup "CSignal"
         [ runTest "MAC" def{hdlSim=False}
         , runTest "CBlockRamTest" def{hdlSim=False}
